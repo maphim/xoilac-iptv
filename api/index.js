@@ -43,13 +43,23 @@ module.exports = async (req, res) => {
     if (pathname === '/playlist.m3u' || pathname === '/playlist.m3u8') {
       const type = urlObj.searchParams.get('type') || 'all';
       // CF_WORKER_URL env: proxy CDN URLs through Cloudflare Worker (no timeout)
-      const proxyUrl = process.env.CF_WORKER_URL || baseUrl;
+      const CF_WORKER_URL = process.env.CF_WORKER_URL;
+      const proxyUrl = CF_WORKER_URL || baseUrl;
       const playlist = await generatePlaylist(type, proxyUrl);
       res.setHeader('Content-Type', 'application/x-mpegurl; charset=utf-8');
       res.setHeader('Content-Disposition', 'inline; filename="xoilac_playlist.m3u"');
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.statusCode = 200;
       return res.end(playlist);
+    }
+
+    if (pathname === '/api/matches') {
+      const { getMatches } = scraper;
+      const type = urlObj.searchParams.get('type') || 'all';
+      const matches = await getMatches(type);
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.statusCode = 200;
+      return res.end(JSON.stringify({ success: true, count: matches.length, matches }));
     }
 
     if (pathname === '/api/stream') {
@@ -70,6 +80,34 @@ module.exports = async (req, res) => {
       res.setHeader('Location', info.streamUrl);
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       return res.end();
+    }
+
+    if (pathname === '/api/qr') {
+      const QRCode = require('qrcode');
+      const qrUrl = urlObj.searchParams.get('url');
+      const size = Math.min(parseInt(urlObj.searchParams.get('size') || '200'), 1000);
+      const format = urlObj.searchParams.get('format') || 'svg';
+      if (!qrUrl) {
+        res.statusCode = 400;
+        res.setHeader('Content-Type', 'application/json');
+        return res.end(JSON.stringify({ error: 'URL parameter required' }));
+      }
+      try {
+        if (format === 'png') {
+          const png = await QRCode.toDataURL(decodeURIComponent(qrUrl), { width: size, errorCorrectionLevel: 'H', margin: 1 });
+          const buf = Buffer.from(png.replace(/^data:image\/png;base64,/, ''), 'base64');
+          res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=3600' });
+          return res.end(buf);
+        } else {
+          const svg = await QRCode.toString(decodeURIComponent(qrUrl), { type: 'svg', width: size, errorCorrectionLevel: 'H', margin: 1 });
+          res.writeHead(200, { 'Content-Type': 'image/svg+xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
+          return res.end(svg);
+        }
+      } catch (err) {
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        return res.end(JSON.stringify({ error: 'QR generation failed: ' + err.message }));
+      }
     }
 
     const html = renderHomepage(baseUrl);
