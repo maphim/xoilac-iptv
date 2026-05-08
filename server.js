@@ -166,6 +166,7 @@ const server = http.createServer(async (req, res) => {
   const urlObj = new URL(req.url, `http://${req.headers.host}`);
   const p = urlObj.pathname;
   const baseUrl = getBaseUrl(req);
+  const proxyUrl = process.env.CF_WORKER_URL || 'https://xoilac-proxy.maphim.workers.dev' || baseUrl;
 
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -173,7 +174,7 @@ const server = http.createServer(async (req, res) => {
 
   try {
     if (p === '/proxy' || p.startsWith('/api/proxy')) return handleProxy(req, res, urlObj);
-    if (p === '/playlist.m3u' || p === '/playlist.m3u8') return handlePlaylist(req, res, urlObj, baseUrl);
+    if (p === '/playlist.m3u' || p === '/playlist.m3u8') return handlePlaylist(req, res, urlObj, proxyUrl);
     if (p === '/movie.m3u' || p === '/movie.m3u8') return handleMoviePlaylist(req, res, urlObj);
     if (p === '/api/matches') return handleMatches(req, res, urlObj);
     if (p === '/api/stream') return handleStreamRedirect(req, res, urlObj);
