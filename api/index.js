@@ -39,10 +39,12 @@ module.exports = async (req, res) => {
       }
     }
 
-    // Football playlist
+    // Football playlist — use CF Worker as proxy if configured
     if (pathname === '/playlist.m3u' || pathname === '/playlist.m3u8') {
       const type = urlObj.searchParams.get('type') || 'all';
-      const playlist = await generatePlaylist(type, baseUrl);
+      // CF_WORKER_URL env: proxy CDN URLs through Cloudflare Worker (no timeout)
+      const proxyUrl = process.env.CF_WORKER_URL || baseUrl;
+      const playlist = await generatePlaylist(type, proxyUrl);
       res.setHeader('Content-Type', 'application/x-mpegurl; charset=utf-8');
       res.setHeader('Content-Disposition', 'inline; filename="xoilac_playlist.m3u"');
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
