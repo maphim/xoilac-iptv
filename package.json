@@ -1,0 +1,15 @@
+{
+  "name": "xoilac-iptv",
+  "version": "1.0.0",
+  "description": "Dynamic IPTV playlist generator from Xoilac TV",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.38.0",
+    "cheerio": "^1.0.0",
+    "node-fetch": "^2.7.0",
+    "qrcode": "^1.5.3"
+  }
+}

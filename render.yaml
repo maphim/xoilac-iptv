@@ -1,0 +1,21 @@
+# Render Blueprint — Infrastructure as Code
+# Deploy: paste this in Render Dashboard → Blueprint
+# Or: use `render blueprint launch` with Render CLI
+services:
+  - type: web
+    name: xoilac-iptv
+    env: node
+    region: singapore  # Closer to Xoilac CDNs for lower latency
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /
+    numInstances: 1
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: PORT
+        value: 3000
+      # Optional: set custom public URL for playlist proxy links
+      # - key: BASE_URL
+      #   value: https://your-app.onrender.com
