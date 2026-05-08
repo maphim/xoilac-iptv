@@ -43,8 +43,7 @@ module.exports = async (req, res) => {
     if (pathname === '/playlist.m3u' || pathname === '/playlist.m3u8') {
       const type = urlObj.searchParams.get('type') || 'all';
       // CF_WORKER_URL env: proxy CDN URLs through Cloudflare Worker (no timeout)
-      const CF_WORKER_URL = process.env.CF_WORKER_URL;
-      const proxyUrl = CF_WORKER_URL || baseUrl;
+      const proxyUrl = process.env.CF_WORKER_URL || 'https://xoilac-proxy.maphim.workers.dev' || baseUrl;
       const playlist = await generatePlaylist(type, proxyUrl);
       res.setHeader('Content-Type', 'application/x-mpegurl; charset=utf-8');
       res.setHeader('Content-Disposition', 'inline; filename="xoilac_playlist.m3u"');
