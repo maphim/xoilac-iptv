@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "Dynamic IPTV playlist generator from Xoilac TV",
   "scripts": {
-    "dev": "node server.js",
-    "start": "node server.js"
+    "dev": "node dev-server.js",
+    "start": "node dev-server.js"
   },
   "dependencies": {
     "@upstash/redis": "^1.38.0",
