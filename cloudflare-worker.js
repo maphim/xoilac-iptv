@@ -4,13 +4,23 @@
 export default {
   async fetch(request) {
     const url = new URL(request.url);
-    const streamUrl = url.searchParams.get('url') || url.searchParams.get('stream');
 
-    if (!streamUrl) {
-      return new Response('Missing ?url= (CDN stream URL)', { status: 400 });
+    // Route: /p/<base64> — short proxy path
+    const pathMatch = url.pathname.match(/^\/p\/([A-Za-z0-9\-_]+=*)$/);
+    let decoded;
+
+    if (pathMatch) {
+      // base64url -> standard base64 -> UTF-8
+      const b64 = pathMatch[1].replace(/-/g, '+').replace(/_/g, '/');
+      decoded = atob(b64);
+      try { decoded = decodeURIComponent(decoded); } catch {}
+    } else {
+      const streamUrl = url.searchParams.get('url') || url.searchParams.get('stream');
+      if (!streamUrl) {
+        return new Response('Missing ?url= or /p/<base64>', { status: 400 });
+      }
+      decoded = decodeURIComponent(streamUrl);
     }
-
-    const decoded = decodeURIComponent(streamUrl);
     const isM3u8 = decoded.includes('.m3u8');
 
     // CDN headers chống hotlink — dùng Origin/Referer của realtimegamepushz.com
