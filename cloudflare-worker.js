@@ -1,16 +1,27 @@
 // Xoilac Proxy Worker — Cloudflare Workers ($0/free)
-// Chỉ proxy thuần: nhận CDN URL → fetch với đúng headers → pipe về client
-// CPU ~1-2ms (không scrape, không parse)
+// Proxy thuần: nhận CDN URL → fetch với đúng headers → pipe về client
+// Fix mobile playback: CORS preflight + Range passthrough + dynamic Content-Type
 export default {
   async fetch(request) {
+    // CORS preflight (mobile browsers)
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+          'Access-Control-Allow-Headers': '*',
+          'Access-Control-Max-Age': '86400',
+        },
+      });
+    }
+
     const url = new URL(request.url);
 
-    // Route: /p/<base64> — short proxy path
+    // Decode stream URL: /p/<base64> or ?url=...
     const pathMatch = url.pathname.match(/^\/p\/([A-Za-z0-9\-_]+=*)$/);
     let decoded;
 
     if (pathMatch) {
-      // base64url -> standard base64 -> UTF-8
       const b64 = pathMatch[1].replace(/-/g, '+').replace(/_/g, '/');
       decoded = atob(b64);
       try { decoded = decodeURIComponent(decoded); } catch {}
@@ -23,39 +34,40 @@ export default {
     }
     const isM3u8 = decoded.includes('.m3u8');
 
-    // CDN headers chống hotlink — dùng Origin/Referer của realtimegamepushz.com
-    const headers = isM3u8
-      ? {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Referer': 'https://xoilackt.tv',
-          'Origin': 'https://xoilackt.tv',
-        }
-      : {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': '*/*',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Origin': 'https://xoilac.realtimegamepushz.com',
-          'Referer': 'https://xoilac.realtimegamepushz.com/',
-          'Sec-Fetch-Dest': 'empty',
-          'Sec-Fetch-Mode': 'cors',
-          'Sec-Fetch-Site': 'cross-site',
-        };
+    // Build headers — pass Range through for mobile seeking
+    const reqHeaders = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Accept': '*/*',
+      'Origin': isM3u8 ? 'https://xoilackt.tv' : 'https://xoilac.realtimegamepushz.com',
+      'Referer': isM3u8 ? 'https://xoilackt.tv' : 'https://xoilac.realtimegamepushz.com/',
+    };
+    // Forward Range header from client (mobile seeking)
+    const range = request.headers.get('Range');
+    if (range) reqHeaders['Range'] = range;
 
     try {
-      const res = await fetch(decoded, { headers, cf: { cacheEverything: false, cacheTtl: 0 } });
+      const res = await fetch(decoded, { headers: reqHeaders, cf: { cacheEverything: false, cacheTtl: 0 } });
 
       if (!res.ok) {
         return new Response('CDN error: ' + res.status, { status: 502 });
       }
 
-      const ct = isM3u8 ? 'application/x-mpegurl' : 'video/x-flv';
+      // Preserve CDN's original Content-Type — mobile players are picky
+      const ct = res.headers.get('Content-Type') || (isM3u8 ? 'application/x-mpegurl' : 'video/x-flv');
+      const respHeaders = {
+        'Content-Type': ct,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Expose-Headers': 'Content-Range',
+      };
+      // Pass through Content-Range for partial content (206)
+      const contentRange = res.headers.get('Content-Range');
+      if (contentRange) respHeaders['Content-Range'] = contentRange;
+      if (res.status === 206) respHeaders['Accept-Ranges'] = 'bytes';
+
       return new Response(res.body, {
-        status: 200,
-        headers: {
-          'Content-Type': ct,
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Access-Control-Allow-Origin': '*',
-        },
+        status: res.status === 206 ? 206 : 200,
+        headers: respHeaders,
       });
     } catch (err) {
       return new Response('Proxy error: ' + err.message, { status: 502 });
