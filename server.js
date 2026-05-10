@@ -81,9 +81,9 @@ async function handleProxy(req, res, urlObj) {
 }
 
 async function handleLuongSonPlaylist(req, res) {
-  const lsScraper = require('./lib/luongson-scraper');
+  const { generatePlaylistCached } = require('./lib/luongson-scraper');
   try {
-    const playlist = await lsScraper.generatePlaylist();
+    const playlist = await generatePlaylistCached();
     res.writeHead(200, {
       'Content-Type': 'application/x-mpegurl; charset=utf-8',
       'Content-Disposition': 'inline; filename="luongson.m3u"',
