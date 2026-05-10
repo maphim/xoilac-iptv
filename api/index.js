@@ -41,8 +41,8 @@ module.exports = async (req, res) => {
 
     // LuongSonTV playlist — uses LuongSonTV's actual API (cdnok9.com)
     if (pathname === '/luongson.m3u' || pathname === '/luongson.m3u8') {
-      const { generatePlaylistCached } = require('../lib/luongson-scraper');
-      const playlist = await generatePlaylistCached();
+      const { generatePlaylist: lsGenerate } = require('../lib/luongson-scraper-cached');
+      const playlist = await lsGenerate();
       res.setHeader('Content-Type', 'application/x-mpegurl; charset=utf-8');
       res.setHeader('Content-Disposition', 'inline; filename="luongson.m3u"');
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
