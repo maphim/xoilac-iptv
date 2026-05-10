@@ -81,13 +81,14 @@ async function handleProxy(req, res, urlObj) {
 }
 
 async function handleLuongSonPlaylist(req, res) {
-  const { generatePlaylist: lsGen } = require('./lib/luongson-scraper-cached');
+  const { generateFastPlaylist } = require('./lib/luongson-scraper');
   try {
-    const playlist = await lsGen();
+    const baseUrl = getBaseUrl(req);
+    const playlist = await generateFastPlaylist('https://xoilac-iptv.vercel.app');
     res.writeHead(200, {
       'Content-Type': 'application/x-mpegurl; charset=utf-8',
       'Content-Disposition': 'inline; filename="luongson.m3u"',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Cache-Control': 'public, max-age=120, s-maxage=240, stale-while-revalidate=60',
     });
     res.end(playlist);
   } catch (err) {
@@ -190,6 +191,20 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
 
   try {
+    if (p === '/api/ls-stream') {
+      const { resolveStreamUrl } = require('./lib/luongson-scraper');
+      const slug = urlObj.searchParams.get('slug');
+      if (!slug) { res.writeHead(400); return res.end('Missing ?slug='); }
+      try {
+        const result = await resolveStreamUrl(slug);
+        if (!result || !result.hls) { res.writeHead(404); return res.end('Stream not available'); }
+        const streamUrl = result.hls || result.flv;
+        res.writeHead(302, { Location: streamUrl, 'Cache-Control': 'public, max-age=30' });
+        return res.end();
+      } catch(e) {
+        res.writeHead(500); return res.end('Error: ' + e.message);
+      }
+    }
     if (p === '/proxy' || p.startsWith('/api/proxy')) return handleProxy(req, res, urlObj);
     if (p === '/luongson.m3u' || p === '/luongson.m3u8') return handleLuongSonPlaylist(req, res);
     if (p === '/playlist.m3u' || p === '/playlist.m3u8') return handlePlaylist(req, res, urlObj, proxyUrl);
