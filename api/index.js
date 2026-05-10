@@ -41,7 +41,7 @@ module.exports = async (req, res) => {
 
     // LuongSonTV fast playlist — redirect M3U (instant load, stream on click)
     if (pathname === '/luongson.m3u' || pathname === '/luongson.m3u8') {
-      const { generateFastPlaylist } = require('../lib/luongson-scraper-cached');
+      const { generateFastPlaylist } = require('../lib/luongson-scraper');
       const playlist = await generateFastPlaylist(baseUrl);
       res.setHeader('Content-Type', 'application/x-mpegurl; charset=utf-8');
       res.setHeader('Content-Disposition', 'inline; filename="luongson.m3u"');
@@ -63,7 +63,7 @@ module.exports = async (req, res) => {
     }
 
     if (pathname === '/api/ls-stream') {
-      const { resolveStreamUrl } = require('../lib/luongson-scraper-cached');
+      const { resolveStreamUrl } = require('../lib/luongson-scraper');
       const slug = urlObj.searchParams.get('slug');
       if (!slug) {
         res.statusCode = 400;
