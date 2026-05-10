@@ -39,11 +39,10 @@ module.exports = async (req, res) => {
       }
     }
 
-    // Football playlist — use CF Worker as proxy if configured
+    // LuongSonTV playlist — uses LuongSonTV's actual API (cdnok9.com)
     if (pathname === '/luongson.m3u' || pathname === '/luongson.m3u8') {
-      const type = urlObj.searchParams.get('type') || 'all';
-      const proxyUrl = process.env.CF_WORKER_URL || 'https://xoilac-proxy.maphim.workers.dev' || baseUrl;
-      const playlist = await generatePlaylist(type, proxyUrl);
+      const { generatePlaylist: lsGeneratePlaylist } = require('../lib/luongson-scraper');
+      const playlist = await lsGeneratePlaylist();
       res.setHeader('Content-Type', 'application/x-mpegurl; charset=utf-8');
       res.setHeader('Content-Disposition', 'inline; filename="luongson.m3u"');
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');

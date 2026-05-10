@@ -80,6 +80,23 @@ async function handleProxy(req, res, urlObj) {
   }
 }
 
+async function handleLuongSonPlaylist(req, res) {
+  const lsScraper = require('./lib/luongson-scraper');
+  try {
+    const playlist = await lsScraper.generatePlaylist();
+    res.writeHead(200, {
+      'Content-Type': 'application/x-mpegurl; charset=utf-8',
+      'Content-Disposition': 'inline; filename="luongson.m3u"',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+    });
+    res.end(playlist);
+  } catch (err) {
+    sendJson(res, 502, { error: err.message });
+  }
+}
+
+// ── Route: /luongson.m3u ──────────────────────────────
+
 // ── Route: /playlist.m3u ──────────────────────────────
 async function handlePlaylist(req, res, urlObj, baseUrl) {
   const type = urlObj.searchParams.get('type') || 'all';
@@ -174,8 +191,9 @@ const server = http.createServer(async (req, res) => {
 
   try {
     if (p === '/proxy' || p.startsWith('/api/proxy')) return handleProxy(req, res, urlObj);
+    if (p === '/luongson.m3u' || p === '/luongson.m3u8') return handleLuongSonPlaylist(req, res);
     if (p === '/playlist.m3u' || p === '/playlist.m3u8') return handlePlaylist(req, res, urlObj, proxyUrl);
-    if (p === '/luongson.m3u' || p === '/luongson.m3u8') return handlePlaylist(req, res, urlObj, proxyUrl);
+
     if (p === '/movie.m3u' || p === '/movie.m3u8') return handleMoviePlaylist(req, res, urlObj);
     if (p === '/api/matches') return handleMatches(req, res, urlObj);
     if (p === '/api/stream') return handleStreamRedirect(req, res, urlObj);
