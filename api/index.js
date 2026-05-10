@@ -39,13 +39,13 @@ module.exports = async (req, res) => {
       }
     }
 
-    // LuongSonTV playlist — uses LuongSonTV's actual API (cdnok9.com)
+    // LuongSonTV fast playlist — redirect M3U (instant load, stream on click)
     if (pathname === '/luongson.m3u' || pathname === '/luongson.m3u8') {
-      const { generatePlaylist: lsGenerate } = require('../lib/luongson-scraper-cached');
-      const playlist = await lsGenerate();
+      const { generateFastPlaylist } = require('../lib/luongson-scraper-cached');
+      const playlist = await generateFastPlaylist(baseUrl);
       res.setHeader('Content-Type', 'application/x-mpegurl; charset=utf-8');
       res.setHeader('Content-Disposition', 'inline; filename="luongson.m3u"');
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Cache-Control', 'public, max-age=120, s-maxage=240, stale-while-revalidate=60');
       res.statusCode = 200;
       return res.end(playlist);
     }
@@ -60,6 +60,36 @@ module.exports = async (req, res) => {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.statusCode = 200;
       return res.end(playlist);
+    }
+
+    if (pathname === '/api/ls-stream') {
+      const { resolveStreamUrl } = require('../lib/luongson-scraper-cached');
+      const slug = urlObj.searchParams.get('slug');
+      if (!slug) {
+        res.statusCode = 400;
+        res.setHeader('Content-Type', 'application/json');
+        return res.end(JSON.stringify({ error: 'Missing ?slug=' }));
+      }
+      try {
+        const result = await resolveStreamUrl(slug);
+        if (!result || !result.hls) {
+          console.log('ls-stream: no stream for', slug);
+          res.statusCode = 404;
+          res.setHeader('Content-Type', 'application/json');
+          return res.end(JSON.stringify({ error: 'Stream not available yet' }));
+        }
+        const streamUrl = result.hls || result.flv;
+        console.log('ls-stream:', result.name, '->', streamUrl.substring(0, 60));
+        res.statusCode = 302;
+        res.setHeader('Location', streamUrl);
+        res.setHeader('Cache-Control', 'public, max-age=30');
+        return res.end();
+      } catch(e) {
+        console.error('ls-stream error:', e.message);
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        return res.end(JSON.stringify({ error: e.message }));
+      }
     }
 
     if (pathname === '/api/matches') {
