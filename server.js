@@ -175,6 +175,7 @@ const server = http.createServer(async (req, res) => {
   try {
     if (p === '/proxy' || p.startsWith('/api/proxy')) return handleProxy(req, res, urlObj);
     if (p === '/playlist.m3u' || p === '/playlist.m3u8') return handlePlaylist(req, res, urlObj, proxyUrl);
+    if (p === '/luongson.m3u' || p === '/luongson.m3u8') return handlePlaylist(req, res, urlObj, proxyUrl);
     if (p === '/movie.m3u' || p === '/movie.m3u8') return handleMoviePlaylist(req, res, urlObj);
     if (p === '/api/matches') return handleMatches(req, res, urlObj);
     if (p === '/api/stream') return handleStreamRedirect(req, res, urlObj);
